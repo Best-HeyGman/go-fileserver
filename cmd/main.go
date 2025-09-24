@@ -110,6 +110,10 @@ func init() {
 	// enable simple authentication
 	flag.StringVar(&USER, "user", "", "Enable authentication with this username")
 	flag.StringVar(&USER, "u", "", "Basic auth shortcut")
+	
+	// enable read only mode
+	flag.BoolVar(&READONLY, "readonly", false, "Disallow delete and upload")
+	flag.BoolVar(&READONLY, "r", false, "Readonly mode shortcut")
 
 	// enable read only mode
 	flag.BoolVar(&READONLY, "readonly", false, "Disallow delete and upload")
