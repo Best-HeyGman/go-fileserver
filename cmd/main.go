@@ -444,7 +444,7 @@ func checkForPathTraversal(path string, client_addr string) bool {
 	if strings.HasPrefix(abs_path, abs_FILE_PATH) {
 		return false
 	} else {
-		maybeLog("CLIENT: %s PATH TARVERSAL FAIL: %s\n", client_addr, abs_path)
+		maybeLog("CLIENT: %s PATH TRAVERSAL FAIL: %s\n", client_addr, abs_path)
 		return true
 	}
 }
