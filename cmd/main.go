@@ -661,7 +661,7 @@ func viewDir(w http.ResponseWriter, r *http.Request) {
 // uploadFile called when a user chooses a file and clicks the upload button.
 func uploadFiles(w http.ResponseWriter, r *http.Request) {
 	if READONLY {
-		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: upload attempted\n", r.RemoteAddr, r.RequestURI)
+		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: Upload attempted\n", r.RemoteAddr, r.RequestURI)
 		http.Error(w, "Server is in readonly mode.", http.StatusForbidden)
 		return
 	}
@@ -730,7 +730,7 @@ if it exists.
 */
 func deleteFile(w http.ResponseWriter, r *http.Request) {
 	if READONLY {
-		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: uploaded attempt\n", r.RemoteAddr, r.RequestURI)
+		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: Deletion attempted\n", r.RemoteAddr, r.RequestURI)
 		http.Error(w, "Server is in readonly mode.", http.StatusForbidden)
 		return
 	}
