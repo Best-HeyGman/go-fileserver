@@ -765,9 +765,9 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Make sure file exists
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+	if !exists(path) {
 		maybeLog("CLIENT: %s DELETE NOT FOUND: %s\n", r.RemoteAddr, path)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "File to delete not found", http.StatusInternalServerError)
 		return
 	}
 
