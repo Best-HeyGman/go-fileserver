@@ -703,6 +703,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 		file, err := files[i].Open()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			maybeLog("CLIENT: %s PATH: %s ERROR WHILE UPLOADING: %s\n", r.RemoteAddr, r.RequestURI, err)
 			return
 		}
 
@@ -710,6 +711,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 
 		if err = copyUploadFile(path, file); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			maybeLog("CLIENT: %s PATH: %s ERROR WHILE UPLOADING: %s\n", r.RemoteAddr, r.RequestURI, err)
 			return
 		}
 
