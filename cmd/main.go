@@ -677,6 +677,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 32 << 20 is about 33.5 Megabytes of cache in ram.
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
