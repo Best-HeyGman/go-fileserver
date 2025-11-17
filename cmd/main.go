@@ -772,9 +772,13 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ignore errors
-	os.Remove(path)
-
-	maybeLog("CLIENT: %s DELETED: %s\n", r.RemoteAddr, path)
+	err := os.Remove(path)
+	if err != nil {
+		http.Error(w, "Deletion failed", http.StatusInternalServerError)
+		maybeLog("CLIENT: %s COULD NOT DELETE: %s ERROR MESSAGE: %s\n", r.RemoteAddr, path, err.Error())
+	} else {
+		maybeLog("CLIENT: %s DELETED: %s\n", r.RemoteAddr, path)
+	}
 
 	// reload the current page
 	http.Redirect(w, r, "view?dir="+dir, http.StatusFound)
