@@ -366,7 +366,7 @@ func fileFunc(path string) (Files, error) {
 
 	files, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	for _, file := range files {
@@ -643,6 +643,7 @@ func viewDir(w http.ResponseWriter, r *http.Request) {
 	f, err := fileFunc(path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		maybeLog("CLIENT: %s ERROR WHILE ACCESSING: %s ERROR MESSAGE: %s\n", r.RemoteAddr, r.RequestURI, err)
 		return
 	}
 
