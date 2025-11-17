@@ -654,6 +654,7 @@ func viewDir(w http.ResponseWriter, r *http.Request) {
 
 	if err := templates.Execute(w, context); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		maybeLog("CLIENT: %s ERROR WHILE EXECUTING HTML TEMPLATE FOR FOLDER: %s ERROR MESSAGE: %s\n", r.RemoteAddr, r.RequestURI, err)
 	}
 }
 
