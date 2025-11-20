@@ -797,6 +797,8 @@ func genKeys(host string) {
 		log.Fatalf("Failed to generate private key: %v", err)
 	}
 
+	keyUsage := x509.KeyUsageDigitalSignature
+
 	notBefore := time.Now()
 	// Good for 2 weeks
 	notAfter := notBefore.Add(14 * 24 * time.Hour)
@@ -815,6 +817,7 @@ func genKeys(host string) {
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
+		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
