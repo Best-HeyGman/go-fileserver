@@ -771,7 +771,6 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ignore errors
 	err := os.Remove(path)
 	if err != nil {
 		http.Error(w, "Deletion failed", http.StatusInternalServerError)
