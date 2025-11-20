@@ -324,24 +324,6 @@ func maybeLog(msg string, args ...any) {
 	}
 }
 
-/*
-copyUploadFile copies a multipart form file to the file system
-returns an error so we can return a 500 instead of crashing/exiting
-*/
-func copyUploadFile(path string, src multipart.File) error {
-	dst, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-
-	defer dst.Close()
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return err
-	}
-	return err
-}
-
 // sizeToStr converts a file size in bytes to a human friendy string.
 func sizeToStr(n int64) string {
 	if n == 0 {
