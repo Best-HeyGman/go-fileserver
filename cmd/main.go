@@ -675,21 +675,30 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	reader, err := r.MultipartReader()
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	// prevents a panic if empty
-	if r.MultipartForm == nil {
 		return
 	}
 
-	files := r.MultipartForm.File["file-upload"]
-
 	dir := filepath.Clean(r.FormValue("directory"))
 
-	for i := range files {
-		path := filepath.Clean(filepath.Join(FILE_PATH, dir, files[i].Filename))
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if part.FormName() != "file-upload" {
+			continue
+		}
+
+		filename := filepath.Base(part.FileName())
+		path := filepath.Clean(filepath.Join(FILE_PATH, dir, filename))
 
 		if checkForPathTraversal(path, r.RemoteAddr) {
 			// prevent path traversal, redirect to home page
@@ -697,7 +706,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		file, err := files[i].Open()
+		file, err := os.Create(path)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -705,13 +714,12 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 
 		defer file.Close()
 
-		if err = copyUploadFile(path, file); err != nil {
+		if _, err = io.Copy(file, part); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		maybeLog("CLIENT: %s UPLOAD: %s\n", r.RemoteAddr, path)
-
 	}
 
 	// reload the current page on successful upload
