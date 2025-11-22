@@ -23,7 +23,6 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -320,24 +319,6 @@ func maybeLog(msg string, args ...any) {
 	if VERBOSE {
 		log.Printf(msg, args...)
 	}
-}
-
-/*
-copyUploadFile copies a multipart form file to the file system
-returns an error so we can return a 500 instead of crashing/exiting
-*/
-func copyUploadFile(path string, src multipart.File) error {
-	dst, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-
-	defer dst.Close()
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return err
-	}
-	return err
 }
 
 // sizeToStr converts a file size in bytes to a human friendy string.
@@ -676,22 +657,30 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 32 << 20 is about 33.5 Megabytes of cache in ram.
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	reader, err := r.MultipartReader()
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	// prevents a panic if empty
-	if r.MultipartForm == nil {
 		return
 	}
 
-	files := r.MultipartForm.File["file-upload"]
-
 	dir := filepath.Clean(r.FormValue("directory"))
 
-	for i := range files {
-		path := filepath.Clean(filepath.Join(FILE_PATH, dir, files[i].Filename))
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if part.FormName() != "file-upload" {
+			continue
+		}
+
+		filename := filepath.Base(part.FileName())
+		path := filepath.Clean(filepath.Join(FILE_PATH, dir, filename))
 
 		if checkForPathTraversal(path, r.RemoteAddr) {
 			// prevent path traversal, redirect to home page
@@ -699,7 +688,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		file, err := files[i].Open()
+		file, err := os.Create(path)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			maybeLog("CLIENT: %s PATH: %s ERROR WHILE UPLOADING: %s\n", r.RemoteAddr, r.RequestURI, err)
@@ -708,14 +697,13 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 
 		defer file.Close()
 
-		if err = copyUploadFile(path, file); err != nil {
+		if _, err = io.Copy(file, part); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			maybeLog("CLIENT: %s PATH: %s ERROR WHILE UPLOADING: %s\n", r.RemoteAddr, r.RequestURI, err)
 			return
 		}
 
 		maybeLog("CLIENT: %s UPLOAD: %s\n", r.RemoteAddr, path)
-
 	}
 
 	// reload the current page on successful upload
