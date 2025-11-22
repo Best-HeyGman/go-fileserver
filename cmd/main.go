@@ -364,7 +364,7 @@ func fileFunc(path string) (Files, error) {
 
 	files, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	for _, file := range files {
@@ -443,7 +443,7 @@ func checkForPathTraversal(path string, client_addr string) bool {
 	if strings.HasPrefix(abs_path, abs_FILE_PATH) {
 		return false
 	} else {
-		maybeLog("CLIENT: %s PATH TARVERSAL FAIL: %s\n", client_addr, abs_path)
+		maybeLog("CLIENT: %s PATH TRAVERSAL FAIL: %s\n", client_addr, abs_path)
 		return true
 	}
 }
@@ -642,6 +642,7 @@ func viewDir(w http.ResponseWriter, r *http.Request) {
 	f, err := fileFunc(path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		maybeLog("CLIENT: %s ERROR WHILE ACCESSING: %s ERROR MESSAGE: %s\n", r.RemoteAddr, r.RequestURI, err)
 		return
 	}
 
@@ -652,13 +653,14 @@ func viewDir(w http.ResponseWriter, r *http.Request) {
 
 	if err := templates.Execute(w, context); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		maybeLog("CLIENT: %s ERROR WHILE EXECUTING HTML TEMPLATE FOR FOLDER: %s ERROR MESSAGE: %s\n", r.RemoteAddr, r.RequestURI, err)
 	}
 }
 
 // uploadFile called when a user chooses a file and clicks the upload button.
 func uploadFiles(w http.ResponseWriter, r *http.Request) {
 	if READONLY {
-		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: uploaded attempt\n", r.RemoteAddr, r.RequestURI)
+		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: Upload attempted\n", r.RemoteAddr, r.RequestURI)
 		http.Error(w, "Server is in readonly mode.", http.StatusForbidden)
 		return
 	}
@@ -674,6 +676,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 32 << 20 is about 33.5 Megabytes of cache in ram.
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -699,6 +702,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 		file, err := files[i].Open()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			maybeLog("CLIENT: %s PATH: %s ERROR WHILE UPLOADING: %s\n", r.RemoteAddr, r.RequestURI, err)
 			return
 		}
 
@@ -706,6 +710,7 @@ func uploadFiles(w http.ResponseWriter, r *http.Request) {
 
 		if err = copyUploadFile(path, file); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			maybeLog("CLIENT: %s PATH: %s ERROR WHILE UPLOADING: %s\n", r.RemoteAddr, r.RequestURI, err)
 			return
 		}
 
@@ -724,7 +729,7 @@ if it exists.
 */
 func deleteFile(w http.ResponseWriter, r *http.Request) {
 	if READONLY {
-		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: uploaded attempt\n", r.RemoteAddr, r.RequestURI)
+		maybeLog("CLIENT: %s PATH: %s: READ ONLY MODE: Deletion attempted\n", r.RemoteAddr, r.RequestURI)
 		http.Error(w, "Server is in readonly mode.", http.StatusForbidden)
 		return
 	}
@@ -759,16 +764,19 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Make sure file exists
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+	if !exists(path) {
 		maybeLog("CLIENT: %s DELETE NOT FOUND: %s\n", r.RemoteAddr, path)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "File to delete not found", http.StatusInternalServerError)
 		return
 	}
 
-	// ignore errors
-	os.Remove(path)
-
-	maybeLog("CLIENT: %s DELETED: %s\n", r.RemoteAddr, path)
+	err := os.Remove(path)
+	if err != nil {
+		http.Error(w, "Deletion failed", http.StatusInternalServerError)
+		maybeLog("CLIENT: %s COULD NOT DELETE: %s ERROR MESSAGE: %s\n", r.RemoteAddr, path, err.Error())
+	} else {
+		maybeLog("CLIENT: %s DELETED: %s\n", r.RemoteAddr, path)
+	}
 
 	// reload the current page
 	http.Redirect(w, r, "view?dir="+dir, http.StatusFound)
@@ -788,6 +796,8 @@ func genKeys(host string) {
 		log.Fatalf("Failed to generate private key: %v", err)
 	}
 
+	keyUsage := x509.KeyUsageDigitalSignature
+
 	notBefore := time.Now()
 	// Good for 2 weeks
 	notAfter := notBefore.Add(14 * 24 * time.Hour)
@@ -806,6 +816,7 @@ func genKeys(host string) {
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
+		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
